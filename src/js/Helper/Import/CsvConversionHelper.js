@@ -334,6 +334,10 @@ export default class ImportCsvConversionHelper {
                 if(!properties.hasOwnProperty(j)) continue;
                 if(element.hasOwnProperty(properties[j])) {
                     let label = element[properties[j]];
+                    if(options.folderSeparator && typeof label === 'string' && label.indexOf(options.folderSeparator) !== -1) {
+                        element[j] = this._generateFolderPath(label, options.folderSeparator, folders, idMap, keyMap);
+                        continue;
+                    }
                     if(!idMap.hasOwnProperty(label)) {
                         keyMap[label] = folders.length;
                         folders.push({id: label, label});
@@ -347,6 +351,37 @@ export default class ImportCsvConversionHelper {
         }
 
         return [folders, idMap, keyMap];
+    }
+
+    /**
+     * Creates a folder for every segment of a path like "A/B/C"
+     *
+     * @param path
+     * @param separator
+     * @param folders
+     * @param idMap
+     * @param keyMap
+     * @returns {string}
+     * @private
+     */
+    static _generateFolderPath(path, separator, folders, idMap, keyMap) {
+        let parts  = path.split(separator).map(p => p.trim()).filter(p => p.length !== 0),
+            parent = '',
+            key    = '';
+    
+        for(let part of parts) {
+            key = key === '' ? part : key + separator + part;
+    
+            if(!idMap.hasOwnProperty(key)) {
+                keyMap[key] = folders.length;
+                folders.push({id: key, label: part, parent: idMap[parent]});
+                idMap[key] = key;
+            }
+    
+            parent = key;
+        }
+    
+        return idMap[key];
     }
 
     /**
@@ -423,7 +458,8 @@ export default class ImportCsvConversionHelper {
             keepass     : {
                 firstLine: 1,
                 db       : 'passwords',
-                mapping  : ['folderLabel', 'label', 'username', 'password', 'url', 'notes']
+                mapping  : ['folderLabel', 'label', 'username', 'password', 'url', 'notes'],
+                folderSeparator: '/'
             },
             bitwardenCsv: {
                 firstLine: 1,
